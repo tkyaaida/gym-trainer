@@ -13,21 +13,23 @@ class TableQLearningAgent:
         self.dim_action = dim_action
         self.obs_min = obs_min
         self.obs_max = obs_max
-        self.n_disc = n_disc
+        self.n_disc = n_disc  # 何段階に離散化するか
 
         self.initial_eps = 0.8
         self.step_size = 0.8
         self.gamma = 0.99
 
-        self.q_values = np.zeros(((n_disc+1)**dim_obs, dim_action))
+        self.q_values = np.zeros((n_disc**dim_obs, dim_action))
         self.state = None
+        self.i_episode = 0
 
     def reset(self, observation):
+        self.i_episode += 1
         self.state = self.get_state(observation)
-        action = self.get_action(0)
+        action = self.get_action()
         return action
 
-    def step(self, observation, reward, i_episode, action):
+    def step(self, observation, reward, action):
         state_prime = self.get_state(observation)
 
         # update params
@@ -36,34 +38,35 @@ class TableQLearningAgent:
         self.state = state_prime
 
         # choose action
-        next_action = self.get_action(i_episode)
+        next_action = self.get_action()
         return next_action
 
     def step_inference(self, observation):
         state = self.get_state(observation)
-        return np.argmax(self.q_values[state, :])
+        action = np.argmax(self.q_values[state, :])
+        return action
 
-    def get_action(self, i_episode):
+    def get_action(self):
         """get action according to behavior policy (epsilon greedy)"""
-        eps = get_decayed_param(self.initial_eps, 0.99, i_episode)
-        action = epsilon_greedy(eps, self.q_values)
-        if action % 2 == 0:
-            action = 0
-        else:
-            action = 1
+        eps = get_decayed_param(self.initial_eps, 0.99, self.i_episode)
+        action = epsilon_greedy(eps, list(self.q_values[self.state, :]))
         return action
 
     def get_state(self, observation):
-        """return discretized state given observation and action"""
+        """return discretized state given observation and action
+
+        Args:
+            observation: raw value returned by environment
+        """
         obs_disc = [
             int(
                 np.digitize(
                     observation[i],
-                    bins=np.linspace(self.obs_min[i], self.obs_max[i], self.n_disc)
+                    bins=np.linspace(self.obs_min[i], self.obs_max[i], self.n_disc-1)
                 )
             ) for i in range(len(observation))]
 
-        state = sum([x + i * self.n_disc for i, x in enumerate(obs_disc)])
+        state = sum([x + i * (self.n_disc-1) for i, x in enumerate(obs_disc)])
 
         return state
 
