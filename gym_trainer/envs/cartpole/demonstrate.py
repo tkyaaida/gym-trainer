@@ -5,7 +5,6 @@
 
 import argparse
 import pickle
-import matplotlib.pyplot as plt
 import gym
 
 
@@ -23,11 +22,9 @@ def main():
     with open(args.agent, 'rb') as f:
         agent = pickle.load(f)
 
-    success_counter = 0
-
     for _ in range(args.number):
         observation = env.reset()
-        action = agent.reset(observation)
+        action = agent.reset_inference(observation)
         for i_step in range(args.step):
             # plt.imshow(envs.render(mode='rgb_array'))
             env.render()
