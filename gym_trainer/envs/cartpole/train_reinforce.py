@@ -3,14 +3,12 @@
 #
 
 import argparse
-import pickle
 import gym
 import numpy as np
 import matplotlib.pyplot as plt
 import chainer
 import chainer.functions as F
-from chainer.training import Trainer
-from chainer.optimizers import MomentumSGD
+from chainer.optimizers import Adam
 from chainer.backends import cuda
 from gym_trainer.agents.reinforce_agent import ReinforceAgent
 from gym_trainer.helpers.logger import Logger
@@ -51,13 +49,13 @@ def convert(samples, device):
 
 def main():
     parser = argparse.ArgumentParser(description='CartPole-v0 with REINFORCE agent')
-    parser.add_argument('--n_epoch', '-ne', type=int, default=2000,
+    parser.add_argument('--n_epoch', '-ne', type=int, default=200,
                         help='number of epoch')
     parser.add_argument('--n_step', '-ns', type=int, default=200,
                         help='maximum number of steps for each trajectory')
     parser.add_argument('--n_rollout', '-nr', type=int, default=20,
                         help='number of trajectories to generate in each iteration')
-    parser.add_argument('--lr', '-lr', type=float, default=0.1,
+    parser.add_argument('--lr', '-lr', type=float, default=0.001,
                         help='learning rate')
     parser.add_argument('--weight_decay_rate', '-wdr', type=float, default=0.00001,
                         help='L2 reguralization')
@@ -71,9 +69,9 @@ def main():
     if args.gpu >= 0:
         agent.policy.to_gpu(args.gpu)
 
-    optimizer = MomentumSGD(lr=args.lr)
+    optimizer = Adam(alpha=args.lr)
     optimizer.setup(agent.policy)
-    optimizer.add_hook(chainer.optimizer_hooks.WeightDecay(args.weight_decay_rate))
+    # optimizer.add_hook(chainer.optimizer_hooks.WeightDecay(args.weight_decay_rate))
 
     # training loop
     losses = []
@@ -126,33 +124,13 @@ def main():
         reward_to_go = agent.calc_reward_to_go(rewards)
         loss = ce * reward_to_go
         loss = loss.reshape((args.n_rollout, args.n_step))
-        loss = F.mean(F.sum(loss, axis=1))
+        loss = F.mean(F.sum(loss, axis=1))  # summation along step axis
         agent.policy.cleargrads()
         loss.backward()
         optimizer.update()
 
         logger.info(f'epoch: {i_epoch}, loss: {loss.array}')
         losses.append(loss.array)
-
-        # evaluate once in a while
-        # if i_epoch % 30 == 0:
-        #     rewards = []
-        #     for _ in range(10):
-        #         obs = env.reset()
-        #         action = agent.reset_inference(obs)
-        #         reward_episode = 0
-        #         while True:
-        #             obs, reward, done, _ = env.step(action)
-        #             reward_episode += reward
-        #             action = agent.step_inference(obs)
-        #             if done:
-        #                 rewards.append(reward_episode)
-        #                 break
-        #     avg_reward = sum(rewards) / len(rewards)
-        #     logger.info('---------------------------------------------')
-        #     logger.info(f'avg reward: {avg_reward}')
-        #     logger.info('---------------------------------------------')
-        #     total_rewards.append(avg_reward)
 
     fig = plt.figure()
     ax = fig.add_subplot(211)

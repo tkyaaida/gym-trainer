@@ -11,7 +11,7 @@ from chainer.distributions import Categorical
 
 class CategoricalPolicy(Chain):
     """Choose discrete actions"""
-    def __init__(self, dim_input, dim_output, dim_hidden=32, dropout_ratio=0.5):
+    def __init__(self, dim_input, dim_output, dim_hidden=100, dropout_ratio=0.5):
         super(CategoricalPolicy, self).__init__()
 
         self.dim_input = dim_input
@@ -19,8 +19,8 @@ class CategoricalPolicy(Chain):
         self.dropout_ratio = dropout_ratio
 
         with self.init_scope():
-            self.l1 = L.Linear(dim_input, dim_hidden)
-            self.l2 = L.Linear(dim_hidden, dim_output)
+            self.l1 = L.Linear(dim_input, dim_hidden, nobias=True)
+            self.l2 = L.Linear(dim_hidden, dim_output, nobias=True)
 
     def forward(self, x):
         """
@@ -32,7 +32,7 @@ class CategoricalPolicy(Chain):
 
         """
         assert x.shape[1] == self.dim_input
-        h = F.relu(self.l1(x))
+        h = F.relu(F.dropout(self.l1(x), ratio=self.dropout_ratio))
         y = self.l2(h)
         return y
 
@@ -42,18 +42,12 @@ class ReinforceAgent:
         self.policy = CategoricalPolicy(dim_input, dim_output)
         self.xp = self.policy.xp
 
-    def reset(self, obs):
-        pass
-
     def reset_inference(self, obs):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
             prob = F.softmax(self.policy(self.xp.array(obs, dtype=self.xp.float32)[None, :]), axis=1)
             c = Categorical(prob)
             action = c.sample_n(1)
             return action.array[0, 0]
-
-    def step(self, obs):
-        pass
 
     def step_inference(self, obs):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
