@@ -75,9 +75,11 @@ def main():
     # training loop
     losses = []
     total_rewards = []
+    logger.info('Start training loop')
     for i_epoch in range(args.n_epoch):
         # generate samples
         samples = []
+        logger.info('Generate samples')
         for i_rollout in range(args.n_rollout):
             trajectory = []
             obs = env.reset()
@@ -116,7 +118,8 @@ def main():
         logger.info(f'epoch: {i_epoch}, avg. reward: {avg_reward}')
         total_rewards.append(avg_reward)
 
-        # evaluate gradient and optimize parameter
+        # evaluate gradient and optimize paramete
+        logger.info('Evaluate gradient and optimize params')
         obs, actions, rewards = convert(samples, args.gpu)
         ce = F.softmax_cross_entropy(agent.policy.forward(obs), actions, reduce='no')
         assert ce.shape == (args.n_rollout * args.n_step, )
