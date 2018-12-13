@@ -65,7 +65,7 @@ def main():
 
     # prepare env and agent
     env = gym.make('CartPole-v0')
-    agent = ReinforceAgent(4, 2)
+    agent = ReinforceAgent(4, 2, args.gpu)
     if args.gpu >= 0:
         agent.policy.to_gpu(args.gpu)
 
