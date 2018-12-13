@@ -51,8 +51,11 @@ class ReinforceAgent:
                 obs = cuda.to_gpu(obs, device=self.device)
             prob = F.softmax(self.policy(obs), axis=1)
             c = Categorical(prob)
-            action = c.sample_n(1)
-            return action.array[0, 0]
+            action = c.sample_n(1).array
+            assert action.shape == (1, 1)
+            if self.device >= 0:
+                action = cuda.to_cpu(action)
+            return action[0, 0]
 
     def step_inference(self, obs):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
@@ -61,8 +64,11 @@ class ReinforceAgent:
                 obs = cuda.to_gpu(obs, device=self.device)
             prob = F.softmax(self.policy(obs), axis=1)
             c = Categorical(prob)
-            action = c.sample_n(1)
-            return action.array[0, 0]
+            action = c.sample_n(1).array
+            assert action.shape == (1, 1)
+            if self.device >= 0:
+                action = cuda.to_cpu(action)
+            return action[0, 0]
 
     def calc_reward_to_go(self, rewards):
         """
