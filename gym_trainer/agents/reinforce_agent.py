@@ -3,6 +3,7 @@
 #
 
 import chainer
+from chainer.backends import cuda
 from chainer import Chain
 import chainer.links as L
 import chainer.functions as F
@@ -38,20 +39,27 @@ class CategoricalPolicy(Chain):
 
 
 class ReinforceAgent:
-    def __init__(self, dim_input, dim_output):
+    def __init__(self, dim_input, dim_output, device):
         self.policy = CategoricalPolicy(dim_input, dim_output)
         self.xp = self.policy.xp
+        self.device = device
 
     def reset_inference(self, obs):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
-            prob = F.softmax(self.policy(self.xp.array(obs, dtype=self.xp.float32)[None, :]), axis=1)
+            obs = self.xp.array(obs, dtype=self.xp.float32)[None, :]
+            if self.device >= 0:
+                obs = cuda.to_gpu(obs, device=self.device)
+            prob = F.softmax(self.policy(obs), axis=1)
             c = Categorical(prob)
             action = c.sample_n(1)
             return action.array[0, 0]
 
     def step_inference(self, obs):
         with chainer.using_config('train', False), chainer.no_backprop_mode():
-            prob = F.softmax(self.policy(self.xp.array(obs, dtype=self.xp.float32)[None, :]), axis=1)
+            obs = self.xp.array(obs, dtype=self.xp.float32)[None, :]
+            if self.device >= 0:
+                obs = cuda.to_gpu(obs, device=self.device)
+            prob = F.softmax(self.policy(obs), axis=1)
             c = Categorical(prob)
             action = c.sample_n(1)
             return action.array[0, 0]

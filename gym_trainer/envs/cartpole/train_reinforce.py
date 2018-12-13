@@ -40,9 +40,9 @@ def convert(samples, device):
     rewards = np.array(rewards, dtype=np.float32).reshape((n, t))
 
     if device >= 0:
-        cuda.to_gpu(obs, device=device)
-        cuda.to_gpu(actions, device=device)
-        cuda.to_gpu(rewards, device=device)
+        obs = cuda.to_gpu(obs, device=device)
+        actions = cuda.to_gpu(actions, device=device)
+        rewards = cuda.to_gpu(rewards, device=device)
 
     return obs, actions, rewards
 
@@ -71,7 +71,6 @@ def main():
 
     optimizer = Adam(alpha=args.lr)
     optimizer.setup(agent.policy)
-    # optimizer.add_hook(chainer.optimizer_hooks.WeightDecay(args.weight_decay_rate))
 
     # training loop
     losses = []
