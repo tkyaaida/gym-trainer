@@ -14,6 +14,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from gym_trainer.helpers.replay_memory import Transition
 from gym_trainer.helpers.utils import get_decayed_param
+from gym_trainer.helpers.logger import Logger
+
+
+logger = Logger('dqn_agent')
 
 
 class DQN(nn.Module):
@@ -44,7 +48,7 @@ class DQN(nn.Module):
 
 class DQNAgent:
     def __init__(self, dim_obs, dim_action, dim_hidden, eps_start, eps_end, eps_decay, gamma, tau, device,
-                 use_polyak=True, lr=0.1):
+                 use_polyak=True, target_update=10, lr=0.1):
         self.policy_net = DQN(dim_obs, dim_action, dim_hidden).to(device)
         self.target_net = DQN(dim_obs, dim_action, dim_hidden).to(device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
@@ -59,6 +63,10 @@ class DQNAgent:
         self.eps_decay = eps_decay
         self.gamma = gamma
         self.tau = tau
+
+        self.use_polyak = use_polyak
+        self.optimize_counter = 0
+        self.target_update = target_update
 
         self.optimizer = torch.optim.RMSprop(self.policy_net.parameters(), lr=lr)
         self.device = device
@@ -84,6 +92,7 @@ class DQNAgent:
             return int(torch.argmax(actions))
 
     def optimize(self, batch: List[Transition]) -> None:
+        self.optimize_counter += 1
         batch_size = len(batch)
         # convert batch
         state, action, state_prime, reward = self.transform_batch(batch)
@@ -107,8 +116,14 @@ class DQNAgent:
         self.optimizer.step()
 
         # Polyak averaging
-        for param, param_target in zip(self.policy_net.parameters(), self.target_net.parameters()):
-            param_target.data.copy_(self.tau * param_target.data + (1-self.tau) * param.data)
+        if self.use_polyak:
+            for param, param_target in zip(self.policy_net.parameters(), self.target_net.parameters()):
+                param_target.data.copy_(self.tau * param_target.data + (1-self.tau) * param.data)
+        elif self.optimize_counter % self.target_update == 0:
+            self.target_net.load_state_dict(self.policy_net.state_dict())
+
+        # logging
+        logger.info(f'loss: {loss.data.to("cpu")}')
 
     def transform_batch(self, batch: List[Transition]) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         """convert batch to array"""
