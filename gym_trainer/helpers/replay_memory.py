@@ -14,6 +14,7 @@ class Transition:
     action: int
     next_obs: np.ndarray
     reward: float
+    done: bool
 
 
 class ReplayMemory:
@@ -22,11 +23,11 @@ class ReplayMemory:
         self.memory = []
         self.position = 0
 
-    def push(self, obs: np.ndarray, action: int, next_obs: np.ndarray, reward: float) -> None:
+    def push(self, obs: np.ndarray, action: int, next_obs: np.ndarray, reward: float, done: bool) -> None:
         """Saves a transition"""
         if len(self.memory) < self.capacity:
             self.memory.append(None)
-        self.memory[self.position] = Transition(obs, action, next_obs, reward)
+        self.memory[self.position] = Transition(obs, action, next_obs, reward, done)
         self.position = (self.position + 1) % self.capacity
 
     def sample(self, batch_size: int) -> List[Transition]:
