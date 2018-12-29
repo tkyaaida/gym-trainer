@@ -95,14 +95,14 @@ class DQNAgent:
         self.optimize_counter += 1
         batch_size = len(batch)
         # convert batch
-        state, action, state_prime, reward = self.transform_batch(batch)
+        state, action, state_prime, reward, done = self.transform_batch(batch)
 
         # compute loss
         with torch.no_grad():
             self.policy_net.eval()
             action_prime = torch.argmax(self.policy_net(state_prime), dim=1)
-            expected_action_values = reward + \
-                                     self.gamma * self.target_net(state_prime)[torch.arange(batch_size), action_prime]
+            q_target = self.target_net(state_prime)[torch.arange(batch_size), action_prime]
+            expected_action_values = reward + self.gamma * q_target * (1 - done)
 
         self.policy_net.train()
         action_values = self.policy_net(state)[torch.arange(batch_size), action]
@@ -125,33 +125,38 @@ class DQNAgent:
         # logging
         logger.info(f'loss: {loss.data.to("cpu")}')
 
-    def transform_batch(self, batch: List[Transition]) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+    def transform_batch(self, batch: List[Transition]) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
         """convert batch to array"""
         state = []
         action = []
         state_prime = []
         reward = []
+        done = []
 
         for x in batch:
             state.append(x.obs)
             action.append(x.action)
             state_prime.append(x.next_obs)
             reward.append(x.reward)
+            done.append(x.done)
 
         state = torch.Tensor(state)
         action = torch.Tensor(action)
         state_prime = torch.Tensor(state_prime)
         reward = torch.Tensor(reward)
+        done = torch.Tensor(done)
 
         if self.device != torch.device('cpu'):
             state = state.to(self.device, dtype=torch.float)
             action = action.to(self.device, dtype=torch.long)
             state_prime = state_prime.to(self.device, dtype=torch.float)
             reward = reward.to(self.device, dtype=torch.float)
+            done = done.to(self.device, dtype=torch.float)
         else:
             state = state.to(torch.float)
             action = action.to(torch.long)
             state_prime = state_prime.to(torch.float)
             reward = reward.to(torch.float)
+            done = done.to(torch.float)
 
-        return state, action, state_prime, reward
+        return state, action, state_prime, reward, done

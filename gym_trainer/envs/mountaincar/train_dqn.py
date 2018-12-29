@@ -40,7 +40,7 @@ def main():
     parser.add_argument('--eps_decay', '-ed', type=int, default=0.99,
                         help='rate of decay')
     parser.add_argument('--learning_rate', '-lr', type=float, default=0.01)
-    parser.add_argument('--device', '-d', default='cpu',
+    parser.add_argument('--device', '-d', default='cuda:0',
                         help='"cuda:0" for GPU 0 or "cpu" for cpu')
     args = parser.parse_args()
 
@@ -66,14 +66,14 @@ def main():
 
                 if done:
                     if t >= 199:
-                        memory.push(obs, action, next_obs, -1)
+                        memory.push(obs, action, next_obs, -1, done)
                     else:
-                        memory.push(obs, action, next_obs, 1)
+                        memory.push(obs, action, next_obs, 1, done)
 
                     avg_reward += reward_sum
                     break
                 else:
-                    memory.push(obs, action, next_obs, 0)
+                    memory.push(obs, action, next_obs, 0, done)
 
                 obs = next_obs
                 action = agent.step_inference(obs)
