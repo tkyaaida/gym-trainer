@@ -104,3 +104,9 @@ ENV/
 # IDE
 .idea/
 
+# dump files
+*.dump
+
+# Figures
+*.png
+*.gif
