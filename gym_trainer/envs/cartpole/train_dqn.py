@@ -80,7 +80,7 @@ def main():
                     memory.push(obs, action, next_obs, 0, done)
 
                 obs = next_obs
-                action = agent.step(obs)
+                action = agent.step(obs, i_epoch)
 
         avg_reward /= args.n_data_collect
         logger.info(f'epoch: {i_epoch}, avg reward: {avg_reward}')
