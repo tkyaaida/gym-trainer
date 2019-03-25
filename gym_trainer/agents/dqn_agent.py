@@ -6,6 +6,7 @@
 # DQN agent
 
 from typing import List, Tuple
+import logging
 import numpy as np
 
 import torch
@@ -14,10 +15,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from gym_trainer.helpers.replay_memory import Transition
 from gym_trainer.helpers.utils import get_decayed_param
-from gym_trainer.helpers.logger import Logger
 
 
-logger = Logger('dqn_agent')
+logger = logging.getLogger(__name__)
 
 
 class DQN(nn.Module):

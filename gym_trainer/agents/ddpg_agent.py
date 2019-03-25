@@ -7,7 +7,7 @@
 
 from typing import List, Tuple
 import copy
-
+from logging import getLogger
 import numpy as np
 import torch
 from torch import Tensor
@@ -18,7 +18,7 @@ from gym_trainer.helpers.replay_memory import Transition
 from gym_trainer.helpers.logger import Logger
 
 
-logger = Logger('ddpg_agent')
+logger = getLogger(__name__)
 
 
 class Actor(nn.Module):
