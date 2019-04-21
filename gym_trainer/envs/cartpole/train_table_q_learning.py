@@ -4,12 +4,16 @@
 
 import os
 import argparse
+from argparse import Namespace
+from pathlib import Path
+from datetime import datetime
 import pickle
 import gym
 from gym_trainer.agents.table_q_learning_agent import TableQLearningAgent
+from gym_trainer.helpers.config import Config
 
 
-def main():
+def get_args() -> Namespace:
     parser = argparse.ArgumentParser(description='CartPole with table Q-learning agent')
     parser.add_argument('--n_episode', '-ne', type=int, default=1000,
                         help='number of episodes to train')
@@ -28,8 +32,23 @@ def main():
     parser.add_argument('--out', '-o', default='result_table_q',
                         help='結果出力のディレクトリ名')
     args = parser.parse_args()
+    return args
 
-    os.mkdir(args.out)
+
+def setup_output_directory(args: Namespace) -> Path:
+    out_dir = Config.EXP_OUT_DIR / 'cartpole' / 'TableQ'
+    if args.out:
+        out_dir = out_dir / args.out
+    else:
+        out_dir = out_dir / f'exp-{datetime.now().strftime("%Y%m%d%H%M%S")}'
+    out_dir.mkdir(exist_ok=True, parents=True)
+    return out_dir
+
+
+def main():
+    args = get_args()
+
+    out_dir = setup_output_directory(args)
 
     # prepare env and agent
     env = gym.make('CartPole-v0')

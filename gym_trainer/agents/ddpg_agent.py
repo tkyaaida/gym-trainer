@@ -15,7 +15,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from gym_trainer.helpers.replay_memory import Transition
-from gym_trainer.helpers.logger import Logger
 
 
 logger = getLogger(__name__)
@@ -44,7 +43,8 @@ class Critic(nn.Module):
         # layer
         self.l1 = nn.Linear(dim_obs + dim_action, dim_hidden, bias=False)
         self.l2 = nn.Linear(dim_hidden, dim_hidden, bias=False)
-        self.l3 = nn.Linear(dim_hidden, dim_action, bias=False)
+        self.l3 = nn.Linear(dim_hidden, 1, bias=False)
+        self.l3.weight.data.uniform_(-3e-3, 3e-3)
 
     def forward(self, x_obs: Tensor, x_action: Tensor) -> Tensor:
         """
@@ -81,9 +81,16 @@ class QUNoise:
 
 
 class DDPGAgent:
-    def __init__(self, dim_obs: int, dim_action: int, dim_hidden: int, gamma: float, tau: float, device: str,
+    def __init__(self, dim_obs: int, dim_action: int, a_min: np.ndarray, a_max: np.ndarray, dim_hidden: int,
+                 gamma: float, tau: float, device: str,
                  use_polyak: bool = False, target_update: int = 10, lr_actor: float = 0.01,
                  lr_critic: float = 0.1):
+
+        assert a_min.shape == a_max.shape == (dim_action, )
+
+        self.a_min = a_min
+        self.a_max = a_max
+
         # model
         self.actor = Actor(dim_obs, dim_action, dim_hidden).to(device)
         self.actor_target = Actor(dim_obs, dim_action, dim_hidden).to(device)
@@ -126,7 +133,7 @@ class DDPGAgent:
         with torch.no_grad():
             action = self.actor(obs).numpy()[0, :] + self.noise.sample()
             assert action.shape == (self.dim_action, )
-            action = np.clip(action, -1, 1)
+            action = np.clip(action, self.a_min, self.a_max)
         return action
 
     def step_inference(self, obs):
@@ -135,6 +142,8 @@ class DDPGAgent:
 
         with torch.no_grad():
             action = self.actor(obs).numpy()[0, :]
+            assert action.shape == (self.dim_action, )
+            action = np.clip(action, self.a_min, self.a_max)
             return action
 
     def to_cpu(self):
@@ -160,7 +169,7 @@ class DDPGAgent:
         with torch.no_grad():
             action_prime = self.actor_target(state_prime)
             q_target = self.critic_target(state_prime, action_prime)
-            q_target = reward + self.gamma * q_target * (1 - done)  # if done, q_target is 0
+            q_target = reward * 0.1 + self.gamma * q_target * (1 - done)  # if done, the second term should be 0
 
         q_values = self.critic(state, action)
         loss = F.smooth_l1_loss(q_values, q_target)
@@ -168,8 +177,8 @@ class DDPGAgent:
         # update
         self.optim_critic.zero_grad()
         loss.backward()
-        for param in self.critic.parameters():
-            param.grad.data.clamp_(-1, 1)
+        # for param in self.critic.parameters():
+        #     param.grad.data.clamp_(-1, 1)
         self.optim_critic.step()
         logger.info(f'Critic loss: {loss.data.to("cpu")}')
 
@@ -180,12 +189,12 @@ class DDPGAgent:
         # update
         self.optim_actor.zero_grad()
         loss.backward()
-        for param in self.actor.parameters():
-            param.grad.data.clamp_(-1, 1)
+        # for param in self.actor.parameters():
+        #     param.grad.data.clamp_(-1, 1)
         self.optim_actor.step()
         logger.info(f'Actor loss: {loss.data.to("cpu")}')
 
-        # upadte target
+        # update target
         if self.use_polyak:
             for param, param_target in zip(self.critic.parameters(), self.critic_target.parameters()):
                 param_target.data.copy_(self.tau * param_target.data + (1-self.tau) * param.data)
@@ -210,23 +219,10 @@ class DDPGAgent:
             reward.append(x.reward)
             done.append(x.done)
 
-        state = torch.Tensor(state)
-        action = torch.Tensor(action)
-        state_prime = torch.Tensor(state_prime)
-        reward = torch.Tensor(reward)
-        done = torch.Tensor(done)
-
-        if self.device != torch.device('cpu'):
-            state = state.to(self.device, dtype=torch.float)
-            action = action.to(self.device, dtype=torch.float)
-            state_prime = state_prime.to(self.device, dtype=torch.float)
-            reward = reward.to(self.device, dtype=torch.float)
-            done = done.to(self.device, dtype=torch.float)
-        else:
-            state = state.to(torch.float)
-            action = action.to(torch.float)
-            state_prime = state_prime.to(torch.float)
-            reward = reward.to(torch.float)
-            done = done.to(torch.float)
+        state = torch.Tensor(state).to(self.device, dtype=torch.float)
+        action = torch.Tensor(action).to(self.device, dtype=torch.float)
+        state_prime = torch.Tensor(state_prime).to(self.device, dtype=torch.float)
+        reward = torch.Tensor(reward).to(self.device, dtype=torch.float)
+        done = torch.Tensor(done).to(self.device, dtype=torch.float)
 
         return state, action, state_prime, reward, done

@@ -30,6 +30,10 @@ class ReplayMemory:
         self.memory[self.position] = Transition(obs, action, next_obs, reward, done)
         self.position = (self.position + 1) % self.capacity
 
+    def bulk_push(self, data: List[Transition]) -> None:
+        for dp in data:
+            self.push(dp.obs, dp.action, dp.next_obs, dp.reward, dp.done)
+
     def sample(self, batch_size: int) -> List[Transition]:
         """sample batch"""
         return random.sample(self.memory, batch_size)
