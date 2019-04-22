@@ -9,6 +9,7 @@ from datetime import datetime
 import gym
 import numpy as np
 import torch
+from tensorboardX import SummaryWriter
 from gym_trainer.agents.ddpg_agent import DDPGAgent
 from gym_trainer.helpers.replay_memory import ReplayMemory
 from gym_trainer.interactions.ddpg_interaction import DDPGInteraction
@@ -81,11 +82,12 @@ def setup_interaction(args: Namespace) -> DDPGInteraction:
 
 
 def train(args: Namespace, ddpg_intr: DDPGInteraction, memory: ReplayMemory,
-          logger: Logger):
+          logger: Logger, writer: SummaryWriter):
 
     for i in range(1, args.n_epoch+1):
         data, avg_reward = ddpg_intr.collect_data(args.n_data_collect)
         logger.info(f'Epoch: {i}, avg reward: {avg_reward}')
+        writer.add_scalar('reward_train', avg_reward, i)
         memory.bulk_push(data)
 
         ddpg_intr.agent.to_gpu()
@@ -97,6 +99,7 @@ def train(args: Namespace, ddpg_intr: DDPGInteraction, memory: ReplayMemory,
             ddpg_intr.agent.to_cpu()
             r = ddpg_intr.run_episode_eval()
             logger.info(f'[Evaluation] reward: {r}')
+            writer.add_scalar('reward_eval', r, i)
 
 
 def main():
@@ -104,12 +107,13 @@ def main():
 
     out_dir = setup_output_directory()
     logger = setup_logger(out_dir)
+    writer = SummaryWriter(str(out_dir))
 
     ddpg_intr = setup_interaction(args)
     memory = ReplayMemory(args.n_memory_capacity)
 
     logger.info('Start Training')
-    train(args, ddpg_intr, memory, logger)
+    train(args, ddpg_intr, memory, logger, writer)
 
 
 if __name__ == '__main__':
