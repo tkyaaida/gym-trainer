@@ -23,13 +23,13 @@ def get_args() -> Namespace:
     parser.add_argument('--n_hidden', '-nh', type=int, default=100,
                         help='number of hidden units')
     # training
-    parser.add_argument('--n_epoch', '-ne', type=int, default=1000,
+    parser.add_argument('--n_epoch', '-ne', type=int, default=30000,
                         help='number of epoch')
-    parser.add_argument('--n_data_collect', '-ndc', type=int, default=128,
+    parser.add_argument('--n_data_collect', '-ndc', type=int, default=1,
                         help='number of data points to collect in each epoch')
     parser.add_argument('--n_max_step', '-nms', type=int, default=200,
                         help='maximum number of steps')
-    parser.add_argument('--n_batch', '-nb', type=int, default=128,
+    parser.add_argument('--n_batch', '-nb', type=int, default=512,
                         help='batch size')
     parser.add_argument('--use_polyak_average', '-upa', action='store_true', default=False,
                         help='use polyak averaging')
